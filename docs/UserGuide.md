@@ -1,8 +1,19 @@
 # Table of contents
 Note: Screenshots in this manual are taken from the development version of the bot. Name of the bot & timer lengths i.a. do not match the active bot.
+- [Configuring the bot before first use](#bot-setup)
 - [Help! I see a stockpile expiration warning message on discord. What do i do?](#warning-messages---what-to-do)
 - [Stockpile timers & codes](#stockpile-code--timer-management)
 - [Inventory & order tracking](#stockpile-inventory-management--the-order-system)
+
+# Bot setup
+The bot can be added to a server using this [link](https://discord.com/oauth2/authorize?client_id=1498687391823691827&permissions=2147665984&integration_type=0&scope=bot)
+After the bot is added to a new server it needs to be configured in order to run properly using 
+**/configure_bot**<br>
+Input arguments:<br>
+*bot_access_role* --> Select a role from your server which is allowed to use the bot's '/'-commands. This means users with this role can retreive stockpile codes, update stockpile information etc.. Make sure you select a role assigned only to members you trust.<br>
+*private_output_channel* --> Select the channel where stockpile expiry messages & notifications from the developer will be sent to. Because the warning messages contain the stockpile codes (to make it easier for people to directly resolve the problem without needing to interact with the bot), this output channel should be accessible only to users who you trust with that type of information.<br>
+*role_to_ping (optional)* --> The bot sends out two warning messages before a stockpile is about to expire. One of them 8h before expiry and another 2h before.
+If this optional argument is set, the second (more urgent) warning message will start with a ping to this role. 
 
 # Warning messages - what to do?
 You see this warning in a foxhole related server you're a part of and you're wondering what to do.
