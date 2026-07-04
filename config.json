@@ -1,0 +1,4 @@
+{"Warning_timer_seconds" : 120,
+"Timer_length_minutes": 5,
+"second_warning_time_seconds" : 60,
+"Env" : "Dev"}
