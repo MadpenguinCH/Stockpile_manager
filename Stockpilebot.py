@@ -236,7 +236,7 @@ async def delete_stockpile(interaction: discord.Interaction, stockpile_name: str
 async def delete_order(interaction: discord.Interaction, order_name: str):
     for pile in orders[str(interaction.guild.id)][order_name].linked_stockpiles:
         if pile in stockpiles[str(interaction.guild.id)].keys():
-            stockpiles[pile].mark_ordered_items(orders[order_name],increasing= False)
+            stockpiles[str(interaction.guild.id)][pile].mark_ordered_items(orders[str(interaction.guild.id)][order_name],increasing= False)
     del orders[str(interaction.guild.id)][order_name]
     save_data(interaction.guild.id,stockpiles[str(interaction.guild.id)],orders[str(interaction.guild.id)])
     await interaction.response.send_message(f"Deleted order: {order_name}", ephemeral=True)
@@ -579,17 +579,10 @@ async def send_notification(interaction: discord.Interaction):
 
 # Help message
 # Commands generated using https://leovoel.github.io/embed-visualizer/
-help_message = discord.Embed(title="Stockpile bot", colour=discord.Colour(0x7d25b9), description="The purpose of Stockpilebot is to keep track of expiry timers of reserved stockpiles created in Foxhole. This overview assumes general familiarity with how Stockpiles work in Foxhole. Otherwise please refer to the [Foxhole wikipage on stockpiles](https://foxhole.wiki.gg/wiki/Reserve_Stockpile) first.")
-
-help_message.set_footer(text="All responses sent by this bot as well as the /message used to call the bot are only visible to the user who uses the respective command. The only publicly visible messages are the two warnings sent before a stockpile is about to expire (1st message without a ping 8h before expiry and a 2nd message with ping 2h before expiry)")
-
-help_message.add_field(name="Bot stockpiles", value="The stockpile itself is represented by the bot as just as a timer with a name and access code (which have to enter in game to be granted access to the stockpile). The primary function of this bot is send out reminder messages on the server before a stockpile is about to expire and give regiment members the information they need to refresh the stockpile in time. What follows here is a list of commands to update or retreive information about our stockpiles:", inline=False)
-help_message.add_field(name="/add_stockpile", value="Input arguments:\n*stockpile_name*, *access_code*\n\nEffect:\nStarts a 50h timer (matching Foxhole's stockpile expiry time) with the specified name. Please name your stockpile in a way that allows other users to infer which Storage Depot/ Sea port or Aircraft depot you're referring to.", inline=True)
-help_message.add_field(name="/delete_stockpile", value="Input arguments:\n*stockpile_name* (from dropdown)\n\nEffect:\nDeletes the timer/ stops tracking.", inline=True)
-help_message.add_field(name="/refresh", value="Input arguments:\n*stockpile_name* (from dropdown)\n\nEffect:\nResets the existing timer to 50h. This command should be called once you've actually pressed the stockpile refresh button in-game.", inline=False)
-help_message.add_field(name="/get_stockpiles", value="Input arguments:\n*None*\n\nEffect:\nPrints an overview of all currently tracked stockpiles.", inline=False)
-help_message.add_field(name="/update_inventory", value="Input arguments:\n*stockpile_name*, * inventory csv copied from ingame*\n\nEffect:\nUpdates stockpile inventory - for now most useful for also updating stockpile location info", inline=False)
-help_message.add_field(name="/show_location", value="Input arguments:\n*stockpile_name*\n\nEffect:\nShows location of the stockpile on the hex-map + name of the hex in question", inline=False)
+help_message = discord.Embed(title="Stockpile bot", colour=discord.Colour(0x7d25b9))
+# help_message.set_footer(text="All responses sent by this bot as well as the /message used to call the bot are only visible to the user who uses the respective command. The only publicly visible messages are the two warnings sent before a stockpile is about to expire (1st message without a ping 8h before expiry and a 2nd message with ping 2h before expiry)")
+help_message.add_field(name="General documentation", value="A general overview over what this bot does + code can be found on [Github](https://github.com/MadpenguinCH/Stockpile_manager)",inline=False)
+help_message.add_field(name="Quickstart manual", value="An overview of the bots commands can be found [here](https://github.com/MadpenguinCH/Stockpile_manager/blob/main/docs/UserGuide.md)",inline=False)
 
 
 @StockBot.tree.command(name = "help", description = "Get an overview of this bot's commands")
