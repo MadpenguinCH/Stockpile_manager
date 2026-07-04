@@ -6,8 +6,8 @@ Note: Screenshots in this manual are taken from the development version of the b
 - [Inventory & order tracking](#stockpile-inventory-management--the-order-system)
 
 # Bot setup
-The bot can be added to a server using this [link](https://discord.com/oauth2/authorize?client_id=1498687391823691827&permissions=2147665984&integration_type=0&scope=bot)
-After the bot is added to a new server it needs to be configured in order to run properly using 
+The bot can be added to a server using this [link](https://discord.com/oauth2/authorize?client_id=1498687391823691827&permissions=2147665984&integration_type=0&scope=bot)<br>
+After the bot is added to a new server it needs to be configured in order to run properly using...<br>
 **/configure_bot**<br>
 Input arguments:<br>
 *bot_access_role* --> Select a role from your server which is allowed to use the bot's '/'-commands. This means users with this role can retreive stockpile codes, update stockpile information etc.. Make sure you select a role assigned only to members you trust.<br>
