@@ -1,4 +1,4 @@
-# Stockpile_manager
+# Stockpilebot
 A tool for management & information sharing of stockpiles in the game Foxhole.
 I have started moving this bot onto github & documentation on the 4th of June 2026 and plan to continue working on it for the forseeable future + expand said documentation.
 My goal is to make logi more easily understandable and manageable for everyone in general but also specifically small groups of players (which is why the bot currently only has limited facility crafting support).
