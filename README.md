@@ -19,8 +19,8 @@ Once the pile has been refreshed the warning message will be update to reflect t
 and the second 'urgent' warning message will be deleted)
 
 The second functionality allows users to track the inventories of the ingame stockpiles using the csv exports introduced in update 64.
-Users can than create orders specifying what items they want in what quantities & in which stockpiles.
-The bot then creates a breakdown of which items are missing & how they can be crafted. 
+Users can then create orders specifying what items they want in what quantities & in which stockpiles.
+The bot then creates a breakdown of which items are available and which ones are still missing & how they can be crafted. 
 The current visualization looks a bit rough bot hopefully should prove at least readable:
 <img width="2190" height="713" alt="image" src="https://github.com/user-attachments/assets/3d201512-40c7-4144-8aa5-c45c26858f5d" />
 
