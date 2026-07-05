@@ -1,8 +1,27 @@
 # Stockpile_manager
-A tool for management & information sharing of stockpiles in the game foxhole
+A tool for management & information sharing of stockpiles in the game Foxhole.
+I have started moving this bot onto github & documentation on the 4th of June 2026 and plan to continue working on it for the forseeable future + expand said documentation.
+My goal is to make logi more easily understandable and manageable for everyone in general but also specifically small groups of players (which is why the bot currently only has limited facility crafting support).
 
-I have started moving this bot onto github & documentation on the 4th of June 2026 and plan to continue working on it for the forseeable future + expand said documentation
+# Purpose
+The main purpose of this bot is to tackle 2 common logi problems in Foxhole:
+1. Stockpiles expiring because no one is refreshing them because they lost track or assumed someone else probably did it.
+2. Lots of manual excel sheet updating required for regis to keep track of what they have lying around in their stockpiles.
 
+The first functionality of the bot is to keep track of the timers of reserved stockpiles by allowing users to share the information about when they refresh (by simply using /refresh on discord after they do so in game). If no one has refreshed the timer 8h before the timer is about to expire, the bot posts a warning message to a preset channel and another warning is sent 2h before expiry (optionally with ping).
+
+<img width="841" height="331" alt="image" src="https://github.com/user-attachments/assets/fddc1eec-76d7-4532-8c67-d7c54cefda26" /><br>
+Once the pile has been refreshed the warning message will be update to reflect that so users know it no longer needs to be taken care of.
+(the red cross reaction will be replaced by a green checkmark, the first warning will be updated with 'Stockpile has been refreshed by {user}'
+and the second 'urgent' warning message will be deleted)
+
+The second functionality allows users to track the inventories of the ingame stockpiles using the csv exports introduced in update 64.
+Users can than create orders specifying what items they want in what quantities & in which stockpiles.
+The bot then creates a breakdown of which items are missing & how they can be crafted. 
+The current visualization looks a bit rough bot hopefully should prove at least readable:
+<img width="2190" height="713" alt="image" src="https://github.com/user-attachments/assets/3d201512-40c7-4144-8aa5-c45c26858f5d" />
+
+For instructions regarding how to use the bot refer to
 - [User manual](docs/UserGuide.md)
 
 # Disclaimers
@@ -23,6 +42,8 @@ Also, it should go without saying but any information you enter into the bot wil
 Whilst I do test new versions of the bot on my own two testservers before deploying them, this project is a one-person passion project and currently undergoing frequent updates.
 Thus, I expect some bugs to still occur occasionally. Though at least the more critical functions (sending warnings at the correct time, hide codes from players who shouldn't be able to see them) has been in active use on one regimental server for a while already and seems to work quite well.
 
-
+# Get in touch
+If you want to report a bug or suggest a feature which you believe could make the tool more useful to players you can contact me
+on discord where my username is also just "madpenguin_ch" (or Madpenguin#5158 using old discord handle format).
 
 
