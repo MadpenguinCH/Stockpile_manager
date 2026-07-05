@@ -3,6 +3,9 @@ A tool for management & information sharing of stockpiles in the game Foxhole.
 I have started moving this bot onto github & documentation on the 4th of June 2026 and plan to continue working on it for the forseeable future + expand said documentation.
 My goal is to make logi more easily understandable and manageable for everyone in general but also specifically small groups of players (which is why the bot currently only has limited facility crafting support).
 
+Since the source code is public (please don't make me regret it :-P) everyone can technically host their own version of the bot if they have concerns about data safety.
+Otherwise you can invite a bot running this code via this [invite link](https://discord.com/oauth2/authorize?client_id=1498687391823691827&permissions=2147665984&integration_type=0&scope=bot)
+
 # Purpose
 The main purpose of this bot is to tackle 2 common logi problems in Foxhole:
 1. Stockpiles expiring because no one is refreshing them because they lost track or assumed someone else probably did it.
