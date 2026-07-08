@@ -106,6 +106,8 @@ The command response also includes information about when each stockpile's inven
 2. Recipes using liquids will show wrong numbers of items needed for crafting - I currently only convert between crates and items per crate but liquids exist as crates, uncrated containers AND liters of volume in a tank and the recipes i'm using in the background aren't formatted in a way that really accounts for that
 3. It's less of a coding issue and more a fundamental problem but the bot doesn't provide a good way to check overlap between orders. E.g. if you have 3 stockpiles A,B and C with 30 bandages each and orders 1&2 requesting 50 each - assuming order 1 draws from A & B and order 2 draws from B & C both orders will see 60 bandages available and assume none need to be crafted when in reality to fulfill both orders you'd need 100 bandages but only 90 are available. But i couldn't really formulate good rules to handle when to 'reserve' items from a stockpile / how to distribute items between orders. So currently it's best to not have a ton of overlapping stockpiles between different orders.
 4. The visualization is well... ugly (as you can see in the example above).
+5. Recipes for colonial-only equipment are still missing. I plan to include those as well eventually but since I play Warden myself
+and have tested the bot mostly with my own regiment the crafting breakdown currently is Warden-focused.
 
 # Miscellaneous
 **/timer**<br>
