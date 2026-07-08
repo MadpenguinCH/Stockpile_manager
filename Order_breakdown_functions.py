@@ -236,5 +236,6 @@ def draw_diagram(draws,crafts,outname,xlim = None):
             return math.ceil(xnext)
         else:
             fig.savefig(outname,bbox_inches="tight", pad_inches=0.1)
+            plt.close()
     except Exception as e:
         print(e)

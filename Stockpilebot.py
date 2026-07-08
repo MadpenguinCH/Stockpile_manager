@@ -309,11 +309,14 @@ async def update_inventory(interaction: discord.Interaction, stockpile_name: str
         region = found[1]
         piletype = found[3]
         ingame_name = found[4]
-        x = found[5]
-        y = found[6]
+        x = float(found[5])
+        y = float(found[6])
         #set info and get list of items which weren't recognized
         pile = stockpiles[str(interaction.guild.id)][stockpile_name]
-        if (not override_metadat) and (((region,piletype,ingame_name) != (pile.region,pile.piletype,pile.ingame_name)) or abs(x-pile.x) > 0.001 or abs(y-pile.y) > 0.001):
+        if (not(pile.last_inventory_update is None)\
+            and not override_metadat)\
+            and (((region,piletype,ingame_name) != (pile.region,pile.piletype,pile.ingame_name)) \
+            or abs(x-float(pile.x)) > 0.001 or abs(y-float(pile.y)) > 0.001):
             msg = f"Stored stockpile metadata doesn't match new input header - cancelling update.\n\
             Set optional argument override_metadat to true if you want to force the update\n\
             Metadata (Stored | Input):\n\
@@ -379,6 +382,7 @@ async def show_location(interaction: discord.Interaction, stockpile_name: str):
             else:
                 thumbfile = None
             await interaction.response.send_message(files=files,embed=loc_message, ephemeral=True)
+            myfile.close()
             os.remove(tmpfile_path)
         else:
             await interaction.response.send_message("No csv was ever uploaded for this stockpile - location info not available", ephemeral=True)
@@ -486,12 +490,12 @@ async def place_order(interaction: discord.Interaction,
 #                 header = content_text.splitlines()[0]
 #                 print(header)
 
-@StockBot.tree.command(name = "order_calc_alt", description = "Check the status of an order")
+@StockBot.tree.command(name = "order_calc", description = "Check the status of an order")
 @app_commands.autocomplete(order_name = orders_autocomplete)
 # @app_commands.guilds(GUILD_ID)
 @has_inventory_permission()
 # @app_commands.checks.has_role(commands_permission_role)
-async def order_calc_v2(interaction: discord.Interaction, order_name: str, use_mpf: bool = False):
+async def order_calc(interaction: discord.Interaction, order_name: str, use_mpf: bool = False):
     order = orders[str(interaction.guild.id)][order_name]
     ordered_items = order.order_contents
     known_inventories = []
@@ -519,8 +523,7 @@ async def order_calc_v2(interaction: discord.Interaction, order_name: str, use_m
     starting_point['missing'] = starting_point['Amount'] - starting_point['accounted_for']
     
     included_items = []
-
-
+        
     craftView = discord.ui.View(timeout=180)
     #name for temporary file
     fname = f"{uuid.uuid4()}.png"
@@ -530,16 +533,25 @@ async def order_calc_v2(interaction: discord.Interaction, order_name: str, use_m
         needed = starting_point.loc[row,'Amount']
         available = starting_point.loc[row,'accounted_for']
 
-        async def buttonpress(interaction,item = Iname):
+        ibutton = discord.ui.Button(
+            label=f"{Iname}: {str(int(available))}/{str(int(needed))}",
+            style = discord.ButtonStyle.success if needed == available else discord.ButtonStyle.gray,
+            # is np.False_ or np.True_ --> convert to JUST bool
+            disabled= bool(needed == available)
+        )
+
+        async def buttonpress(interaction,item = Iname, button = ibutton):
             if item not in included_items:
                 included_items.append(item)
+                button.style = discord.ButtonStyle.blurple
             else:
                 included_items.remove(item)
+                button.style = discord.ButtonStyle.gray
             ordered_items[ordered_items['Item'].isin(included_items)]
 
             fname = f"{uuid.uuid4()}.png"
             if len(included_items) > 0:
-                order_calc(ordered_items[ordered_items['Item'].isin(included_items)], copy.deepcopy(combined_inventory),fname, use_mpf)
+                order_calc_static(ordered_items[ordered_items['Item'].isin(included_items)], copy.deepcopy(combined_inventory),fname, use_mpf)
                 breakdown_image = discord.File(fname)
                 imfile = [breakdown_image]
             else:
@@ -550,21 +562,18 @@ async def order_calc_v2(interaction: discord.Interaction, order_name: str, use_m
                 view = craftView,
                 attachments = imfile
             )
+
+
             if len(imfile) != 0:
                 breakdown_image.close()
                 os.remove(fname)
-
-        ibutton = discord.ui.Button(
-            label=f"{Iname}: {str(int(available))}/{str(int(needed))}",
-            style = discord.ButtonStyle.success if needed == available else discord.ButtonStyle.gray,
-        )
 
         ibutton.callback = buttonpress
         craftView.add_item(ibutton)
     await interaction.response.send_message('Click on items to include/exclude them in visual crafting breakdown',view = craftView,ephemeral=True)
     
         
-def order_calc(ordered_items, combined_inventory,filename,use_mpf):
+def order_calc_static(ordered_items, combined_inventory,filename,use_mpf):
     recipe_choices = pd.DataFrame(columns = ['Item','Facility'])
     draws = []
     crafts = []
