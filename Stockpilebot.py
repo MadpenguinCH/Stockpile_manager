@@ -30,6 +30,7 @@ import re
 import secrets
 from pathlib import Path
 import uuid
+import copy
 
 handler = RotatingFileHandler(
     "error.log",
@@ -538,7 +539,7 @@ async def order_calc_v2(interaction: discord.Interaction, order_name: str, use_m
 
             fname = f"{uuid.uuid4()}.png"
             if len(included_items) > 0:
-                order_calc(ordered_items[ordered_items['Item'].isin(included_items)], combined_inventory,fname, use_mpf)
+                order_calc(ordered_items[ordered_items['Item'].isin(included_items)], copy.deepcopy(combined_inventory),fname, use_mpf)
                 breakdown_image = discord.File(fname)
                 imfile = [breakdown_image]
             else:
