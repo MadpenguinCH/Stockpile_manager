@@ -1,6 +1,6 @@
 from discord.ext import commands, tasks
 import discord
-from discord import app_commands
+from discord import app_commands, NotFound
 # Timer and inventory tracking
 from Stockpile_class import *
 import json
@@ -617,9 +617,16 @@ async def send_notification(interaction: discord.Interaction):
         path.write_text(random_token)
         os.chmod(path, 0o600)
         for guild in serverconfigs.keys():
-            channel = StockBot.get_channel(serverconfigs[guild]['warn_channel'])
+            channel_id = int(serverconfigs[guild]["warn_channel"])
+            channel = StockBot.get_channel(channel_id)
             if channel is None:
-                channel = await StockBot.fetch_channel(serverconfigs[guild]['warn_channel'])
+                try:
+                    channel = await StockBot.fetch_channel(channel_id)
+                except NotFound:
+                    # This specific error - do not print to error log - it's ok there's just no channel to print to
+                    # print(f"Warning channel {channel_id} does not exist.")
+                    channel = None
+                    continue
             await channel.send(pwcheck.message)
             #If it fails for one server just try the other ones anyways but log the error
         await interaction.followup.send("Sent server notifications",ephemeral=True)
@@ -653,9 +660,17 @@ async def help(interaction: discord.Interaction, name:str, hours: int, minutes: 
 async def stockpile_expiration_check():
     for guild in serverconfigs.keys():
         try:
-            channel = StockBot.get_channel(serverconfigs[guild]['warn_channel'])
+            channel_id = int(serverconfigs[guild]["warn_channel"])
+            channel = StockBot.get_channel(channel_id)
             if channel is None:
-                channel = await StockBot.fetch_channel(serverconfigs[guild]['warn_channel'])
+                try:
+                    channel = await StockBot.fetch_channel(channel_id)
+                except NotFound:
+                    # This specific error - do not print to error log - it's ok there's just no channel to print to
+                    # print(f"Warning channel {channel_id} does not exist.")
+                    channel = None
+                    continue
+
             ping_role_id = serverconfigs[guild]['ping_role']
             if(len(stockpiles[guild]) != 0):
                 for stockpile in stockpiles[guild].values():
