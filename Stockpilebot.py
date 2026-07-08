@@ -29,6 +29,7 @@ from Bot_data_save_and_load import *
 import re
 import secrets
 from pathlib import Path
+import uuid
 
 handler = RotatingFileHandler(
     "error.log",
@@ -484,69 +485,106 @@ async def place_order(interaction: discord.Interaction,
 #                 header = content_text.splitlines()[0]
 #                 print(header)
 
-@StockBot.tree.command(name = "order_calc", description = "Check the status of an order")
+@StockBot.tree.command(name = "order_calc_alt", description = "Check the status of an order")
 @app_commands.autocomplete(order_name = orders_autocomplete)
 # @app_commands.guilds(GUILD_ID)
 @has_inventory_permission()
 # @app_commands.checks.has_role(commands_permission_role)
-async def order_calc(interaction: discord.Interaction, order_name: str, use_mpf: bool = False):
-    try: 
-        order = orders[str(interaction.guild.id)][order_name]
-        ordered_items = order.order_contents
-        known_inventories = []
-        for pile in order.linked_stockpiles:
-            if stockpiles[str(interaction.guild.id)][pile].inventory is not None:
-                known_inventories.append(stockpiles[str(interaction.guild.id)][pile].get_stockpile_contents().loc[:,['Item','Amount']].rename(columns={"Amount": pile}))
-        #Check if empty inventories are stored as none or just skipped
-        if len(known_inventories) >= 1:
-            combined_inventory = known_inventories[0]
-            for extra in range(1,len(known_inventories)):
-                combined_inventory = combined_inventory.merge(known_inventories[extra],how = 'outer', left_on = 'Item', right_on = 'Item').fillna(0)
-        elif len(known_inventories) == 0:
-            combined_inventory = pd.DataFrame(columns=['Item','Amount','num_orders_requesting'])
-        for col in combined_inventory.columns[1:]:
-            combined_inventory[col] = pd.to_numeric(combined_inventory[col],downcast = 'integer')
-        recipe_choices = pd.DataFrame(columns = ['Item','Facility'])
-        draws = []
-        crafts = []
-        combined_inventory['total available'] = combined_inventory.iloc[:,1:].sum(axis = 1)
-        # Vehicles can be present directly or as crate --> break down order into number of ordered items total
-        ordered_items = unpack_inventory(ordered_items.rename(columns = {'Amount':'total available'})).rename(columns = {'total available': 'Amount'})
-        combined_inventory = unpack_inventory(combined_inventory.loc[:,['Item','total available']])
-        while True:
-            # total_inv = combined_inventory.loc[:,['Item','total available']]
-            # unpack_inventory(ordered_items.rename(columns = {'Amount':'total available'}))
-            drawable = draw_from_inventory(ordered_items,combined_inventory)
-            draws.append(drawable)
-            if(all(drawable['missing']==0)):
-                break
-
-            combined_inventory['total available'] = combined_inventory['total available'].to_numpy() - combined_inventory.merge(drawable.loc[:,['Item','Accounted for']], how = 'left', left_on = 'Item', right_on = 'Item').fillna(0)['Accounted for'].to_numpy()
-            craft_order = drawable.loc[:,['Item','missing']].loc[drawable['missing'] != 0]
-            new_order,alt_recipes = calc_recipes(craft_order, use_MPF=use_mpf)
-            if(new_order is None):
-                break
-            crafts.append(new_order)
-            recipe_choices = pd.concat([recipe_choices,alt_recipes])
-            ordered_items = new_order.loc[:,['Ingredient','Amount']].rename(columns = {'Ingredient': 'Item'}).groupby('Item').sum()
-        #Name of intermediate file to be created, sent, then deleted
-        filename = str(interaction.guild_id)+'_'+order_name+'.png'
-        plot_extent = draw_diagram(copy.deepcopy(draws),copy.deepcopy(crafts),filename)
-        draw_diagram(draws,crafts,filename,plot_extent)
-        breakdown_image = discord.File(filename)
-        msg = "**Showing order breakdown: **\n"
-        if len(order.linked_stockpiles) > 0:
-            msg += '\n__Stockpile inventories considered__'
-            for pilename in order.linked_stockpiles:
-                if pilename in stockpiles[str(interaction.guild.id)].keys():
-                    pileinf = stockpiles[str(interaction.guild.id)][pilename]
-                    msg += f"\n{pileinf.name} - last updated: {pileinf.time_since_last_update()}"
-        await interaction.response.send_message(msg,file=breakdown_image, ephemeral=True)
-        breakdown_image.close()
-        os.remove(filename)
-    except Exception as e:
-        print(e)
+async def order_calc_v2(interaction: discord.Interaction, order_name: str, use_mpf: bool = False):
+    order = orders[str(interaction.guild.id)][order_name]
+    ordered_items = order.order_contents
+    known_inventories = []
+    for pile in order.linked_stockpiles:
+        if stockpiles[str(interaction.guild.id)][pile].inventory is not None:
+            known_inventories.append(stockpiles[str(interaction.guild.id)][pile].get_stockpile_contents().loc[:,['Item','Amount']].rename(columns={"Amount": pile}))
+    #Check if empty inventories are stored as none or just skipped
+    if len(known_inventories) >= 1:
+        combined_inventory = known_inventories[0]
+        for extra in range(1,len(known_inventories)):
+            combined_inventory = combined_inventory.merge(known_inventories[extra],how = 'outer', left_on = 'Item', right_on = 'Item').fillna(0)
+    elif len(known_inventories) == 0:
+        combined_inventory = pd.DataFrame(columns=['Item','Amount','num_orders_requesting'])
+    for col in combined_inventory.columns[1:]:
+        combined_inventory[col] = pd.to_numeric(combined_inventory[col],downcast = 'integer')
+    recipe_choices = pd.DataFrame(columns = ['Item','Facility'])
+    draws = []
+    crafts = []
+    combined_inventory['total available'] = combined_inventory.iloc[:,1:].sum(axis = 1)
+    # Vehicles can be present directly or as crate --> break down order into number of ordered items total
+    ordered_items = unpack_inventory(ordered_items.rename(columns = {'Amount':'total available'})).rename(columns = {'total available': 'Amount'})
+    combined_inventory = unpack_inventory(combined_inventory.loc[:,['Item','total available']])
+    starting_point = ordered_items.merge(combined_inventory, how = 'left', on = 'Item').fillna(0)
+    starting_point['accounted_for'] = starting_point.to_numpy()[:,1:].min(axis = 1)
+    starting_point['missing'] = starting_point['Amount'] - starting_point['accounted_for']
     
+    included_items = []
+
+
+    craftView = discord.ui.View(timeout=180)
+    #name for temporary file
+    fname = f"{uuid.uuid4()}.png"
+
+    for row in range(starting_point.shape[0]):
+        Iname = starting_point.loc[row,'Item']
+        needed = starting_point.loc[row,'Amount']
+        available = starting_point.loc[row,'accounted_for']
+
+        async def buttonpress(interaction,item = Iname):
+            if item not in included_items:
+                included_items.append(item)
+            else:
+                included_items.remove(item)
+            ordered_items[ordered_items['Item'].isin(included_items)]
+
+            fname = f"{uuid.uuid4()}.png"
+            if len(included_items) > 0:
+                order_calc(ordered_items[ordered_items['Item'].isin(included_items)], combined_inventory,fname, use_mpf)
+                breakdown_image = discord.File(fname)
+                imfile = [breakdown_image]
+            else:
+                imfile = []
+
+            await interaction.response.edit_message(
+                content= "Click on items to include/exclude them in visual crafting breakdown",
+                view = craftView,
+                attachments = imfile
+            )
+            if len(imfile) != 0:
+                breakdown_image.close()
+                os.remove(fname)
+
+        ibutton = discord.ui.Button(
+            label=f"{Iname}: {str(int(available))}/{str(int(needed))}",
+            style = discord.ButtonStyle.success if needed == available else discord.ButtonStyle.gray,
+        )
+
+        ibutton.callback = buttonpress
+        craftView.add_item(ibutton)
+    await interaction.response.send_message('Click on items to include/exclude them in visual crafting breakdown',view = craftView,ephemeral=True)
+    
+        
+def order_calc(ordered_items, combined_inventory,filename,use_mpf):
+    recipe_choices = pd.DataFrame(columns = ['Item','Facility'])
+    draws = []
+    crafts = []
+
+    while True:
+        drawable = draw_from_inventory(ordered_items,combined_inventory)
+        draws.append(drawable)
+        if(all(drawable['missing']==0)):
+            break
+
+        combined_inventory['total available'] = combined_inventory['total available'].to_numpy() - combined_inventory.merge(drawable.loc[:,['Item','Accounted for']], how = 'left', left_on = 'Item', right_on = 'Item').fillna(0)['Accounted for'].to_numpy()
+        craft_order = drawable.loc[:,['Item','missing']].loc[drawable['missing'] != 0]
+        new_order,alt_recipes = calc_recipes(craft_order, use_MPF=use_mpf)
+        if(new_order is None):
+            break
+        crafts.append(new_order)
+        recipe_choices = pd.concat([recipe_choices,alt_recipes])
+        ordered_items = new_order.loc[:,['Ingredient','Amount']].rename(columns = {'Ingredient': 'Item'}).groupby('Item').sum()
+    plot_extent = draw_diagram(copy.deepcopy(draws),copy.deepcopy(crafts),filename)
+    draw_diagram(draws,crafts,filename,plot_extent)
+
 
 @StockBot.tree.command(name = "send_notification", description = "Send info about e.g. updates / downtimes & new features to all servers")
 @is_owner()

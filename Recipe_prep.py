@@ -35,13 +35,12 @@ alt_order = [
 'Shipyard',
 'Garage',
 'Base',
-'MPF',
+'Construction Yard',
 'Aircraft Hangar',
 'Coal Refinery',
 'Ammunition Factory',
 'Infantry Kit Factory',
 'Metalworks Factory'
-'Construction Yard',
 'Materials Factory',
 'Small Assembly Station',
 'Concrete Mixer',
@@ -67,6 +66,7 @@ alt_order = [
 'Large Assembly Station\n(Aircraft Assembly)',
 'Oil Refinery\n(Reformer)',
 'Metalworks Factory\n(Recycler)',
+'MPF'
 ]
 sort_order = pd.DataFrame({
 "Facility": alt_order,
