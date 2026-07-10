@@ -395,7 +395,8 @@ async def show_location(interaction: discord.Interaction, stockpile_name: str):
 # @app_commands.checks.has_role(commands_permission_role)
 async def order_excel_template(interaction: discord.Interaction):
     order_excel = discord.File('Ordersheet_input.xlsx')
-    await interaction.response.send_message('Fill in the items to order and the ordered amount in the first sheet then submit with /place_order', file=order_excel, ephemeral=True)
+    order_csv = discord.File('Ordersheet_input.csv')
+    await interaction.response.send_message('Fill in the items to order and the ordered amount in the first sheet then submit with /place_order', files=[order_excel,order_csv], ephemeral=True)
     order_excel.close()
 
 
@@ -422,22 +423,30 @@ async def place_order(interaction: discord.Interaction,
         ]
         # Download the attachment bytes
         data = await order_file.read()
-        order_content = pd.read_excel(io.BytesIO(data),index_col=0,sheet_name='Order')
-        invalid_items = set.difference(set(order_content.index),valid_items)
-        valid = set.intersection(set(order_content.index),valid_items)
-        response_message = "Order has been placed\n"
-        if(invalid_items):
-            response_message += "Unrecognized items from the order excel:"
-            response_message += str([item for item in invalid_items])
-        order_content = order_content.loc[list(valid),:]
-        order_content = order_content.reset_index()
-        order_content.columns = pd.Index(['Item','Amount'])
-        someorder = Order(order_content,[stockpiles[str(interaction.guild.id)][pile].name for pile in selected])
-        for pile in selected:
-            stockpiles[str(interaction.guild.id)][pile].mark_ordered_items(someorder)
-        orders[str(interaction.guild.id)][order_name] = someorder
-        save_data(interaction.guild.id,stockpiles[str(interaction.guild.id)],orders[str(interaction.guild.id)])
-        await interaction.response.send_message(response_message,ephemeral=True)
+        if(order_file.filename.endswith('.xlsx')):
+            order_content = pd.read_excel(io.BytesIO(data),index_col=0,sheet_name='Order')
+        elif(order_file.filename.endswith('.csv')):
+            order_content = pd.read_csv(io.BytesIO(data),index_col=0)
+            order_content = order_content.loc[order_content['Amount'] != 0]
+        else:
+            order_content = None
+            await interaction.response_message('File type not recognized (expecting file suffix .xlsx or .csv)')
+        if not order_content is None:
+            invalid_items = set.difference(set(order_content.index),valid_items)
+            valid = set.intersection(set(order_content.index),valid_items)
+            response_message = "Order has been placed\n"
+            if(invalid_items):
+                response_message += "Unrecognized items from the order excel:"
+                response_message += str([item for item in invalid_items])
+            order_content = order_content.loc[list(valid),:]
+            order_content = order_content.reset_index()
+            order_content.columns = pd.Index(['Item','Amount'])
+            someorder = Order(order_content,[stockpiles[str(interaction.guild.id)][pile].name for pile in selected])
+            for pile in selected:
+                stockpiles[str(interaction.guild.id)][pile].mark_ordered_items(someorder)
+            orders[str(interaction.guild.id)][order_name] = someorder
+            save_data(interaction.guild.id,stockpiles[str(interaction.guild.id)],orders[str(interaction.guild.id)])
+            await interaction.response.send_message(response_message,ephemeral=True)
     except Exception as e:
         print(e)
 
@@ -499,9 +508,11 @@ async def order_calc(interaction: discord.Interaction, order_name: str, use_mpf:
     order = orders[str(interaction.guild.id)][order_name]
     ordered_items = order.order_contents
     known_inventories = []
+    inventory_strings =[]
     for pile in order.linked_stockpiles:
         if stockpiles[str(interaction.guild.id)][pile].inventory is not None:
             known_inventories.append(stockpiles[str(interaction.guild.id)][pile].get_stockpile_contents().loc[:,['Item','Amount']].rename(columns={"Amount": pile}))
+            inventory_strings.append(f"{pile}: {stockpiles[str(interaction.guild.id)][pile].time_since_last_update()}")
     #Check if empty inventories are stored as none or just skipped
     if len(known_inventories) >= 1:
         combined_inventory = known_inventories[0]
@@ -523,6 +534,11 @@ async def order_calc(interaction: discord.Interaction, order_name: str, use_mpf:
     starting_point['missing'] = starting_point['Amount'] - starting_point['accounted_for']
     
     included_items = []
+
+    static_message = f"Click on items to include/exclude them in visual crafting breakdown\n\nInventory snapshots used:\n"
+    for inv in inventory_strings:
+        static_message += inv +'\n'
+
     class timed_paged_view(discord.ui.View):
         def __init__(self,max_page):
             super().__init__(timeout=180)
@@ -565,7 +581,7 @@ async def order_calc(interaction: discord.Interaction, order_name: str, use_mpf:
                 imfile = []
 
             await interaction.response.edit_message(
-                content= "Click on items to include/exclude them in visual crafting breakdown",
+                content= f"{static_message}\nshowing page {craftView.page+1}/{craftView.max_page}",
                 view = craftView,
                 attachments = imfile
             )
@@ -612,7 +628,7 @@ async def order_calc(interaction: discord.Interaction, order_name: str, use_mpf:
         for button in buttons[craftView.page*20:min((craftView.page+1)*20,len(buttons))]:
             craftView.add_item(button)
         await interaction.response.edit_message(
-            content= f'Click on items to include/exclude them in visual crafting breakdown\nshowing page {craftView.page+1}/{craftView.max_page}',
+            content= f"{static_message}\nshowing page {craftView.page+1}/{craftView.max_page}",
             view = craftView
         )
 
@@ -628,7 +644,7 @@ async def order_calc(interaction: discord.Interaction, order_name: str, use_mpf:
         for button in buttons[craftView.page*20:min((craftView.page+1)*20,len(buttons))]:
             craftView.add_item(button)
         await interaction.response.edit_message(
-            content= f'Click on items to include/exclude them in visual crafting breakdown\nshowing page {craftView.page+1}/{craftView.max_page}',
+            content= f"{static_message}\nshowing page {craftView.page+1}/{craftView.max_page}",
             view = craftView
         )
 
@@ -637,8 +653,7 @@ async def order_calc(interaction: discord.Interaction, order_name: str, use_mpf:
     craftView.add_item(page_button_decrease)
     craftView.add_item(page_button_increase)
 
-
-    await interaction.response.send_message(f'Click on items to include/exclude them in visual crafting breakdown\nshowing page {craftView.page+1}/{craftView.max_page}',view = craftView,ephemeral=True)
+    await interaction.response.send_message(f'{static_message}\nshowing page {craftView.page+1}/{craftView.max_page}',view = craftView,ephemeral=True)
     
         
 def order_calc_static(ordered_items, combined_inventory,filename,use_mpf):

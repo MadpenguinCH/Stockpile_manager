@@ -91,3 +91,9 @@ valid_items = np.unique(pd.concat([valid_items['Item name'].str.extract(r'(.*) \
 # #Save processed excel for easier typescript version port
 # item_infos.to_csv('Item_infos.csv',index = False)
 # recipes.to_csv('Item_recipes.csv',index = False)
+# pd.DataFrame(index=item_infos['Item name'])
+
+# #Csv template extraction for people who don't have excel
+# csv_template = pd.DataFrame(index=item_infos['Item name'])
+# csv_template['Amount'] = 0
+# csv_template.index.name = 'Item'
