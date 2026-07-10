@@ -523,11 +523,18 @@ async def order_calc(interaction: discord.Interaction, order_name: str, use_mpf:
     starting_point['missing'] = starting_point['Amount'] - starting_point['accounted_for']
     
     included_items = []
-        
-    craftView = discord.ui.View(timeout=180)
+    class timed_paged_view(discord.ui.View):
+        def __init__(self,max_page):
+            super().__init__(timeout=180)
+            self.page = 0
+            self.from_index = 0
+            self.to_index = 0
+            self.max_page = max_page
+    craftView = timed_paged_view(max_page=math.ceil(starting_point.shape[0]/20))
     #name for temporary file
     fname = f"{uuid.uuid4()}.png"
-
+    # Save buttons outside of view so they can be removed/added when switching through pages
+    buttons = []
     for row in range(starting_point.shape[0]):
         Iname = starting_point.loc[row,'Item']
         needed = starting_point.loc[row,'Amount']
@@ -569,8 +576,69 @@ async def order_calc(interaction: discord.Interaction, order_name: str, use_mpf:
                 os.remove(fname)
 
         ibutton.callback = buttonpress
-        craftView.add_item(ibutton)
-    await interaction.response.send_message('Click on items to include/exclude them in visual crafting breakdown',view = craftView,ephemeral=True)
+        buttons.append(ibutton)
+    
+    craftView.page = 0 
+    craftView.from_index = craftView.page*20
+    craftView.to_index = min((craftView.page+1)*20,len(buttons))
+    for button in buttons[craftView.from_index:craftView.to_index]:
+     craftView.add_item(button)
+    
+    # Add page switch buttons
+    #Start on lowest page so disabled
+    page_button_decrease = discord.ui.Button(
+            label="<--",
+            style = discord.ButtonStyle.blurple,
+            disabled=True,
+            row=4
+        )
+    page_button_increase = discord.ui.Button(
+            label="-->",
+            style = discord.ButtonStyle.blurple,
+            disabled=len(buttons)==craftView.to_index,
+            row = 4
+        )
+
+    #Dirty but don't want to copy cope twice and not sure how to reuse buttonpress in callback with different 'change' argument
+    async def page_decrease(interaction):
+        for button in buttons[craftView.page*20:min((craftView.page+1)*20,len(buttons))]:
+            craftView.remove_item(button)
+        craftView.page -= 1
+        craftView.from_index = craftView.page*20
+        craftView.to_index = min((craftView.page+1)*20,len(buttons))
+        # button.disabled = len(buttons)>to_index if button.label == "-->" else page == 0
+        page_button_decrease.disabled = craftView.page == 0
+        page_button_increase.disabled = len(buttons)==craftView.to_index
+        for button in buttons[craftView.page*20:min((craftView.page+1)*20,len(buttons))]:
+            craftView.add_item(button)
+        await interaction.response.edit_message(
+            content= f'Click on items to include/exclude them in visual crafting breakdown\nshowing page {craftView.page+1}/{craftView.max_page}',
+            view = craftView
+        )
+
+    async def page_increase(interaction):
+        for button in buttons[craftView.page*20:min((craftView.page+1)*20,len(buttons))]:
+            craftView.remove_item(button)
+        craftView.page += 1
+        craftView.from_index = craftView.page*20
+        craftView.to_index = min((craftView.page+1)*20,len(buttons))
+        # button.disabled = len(buttons)>to_index if button.label == "-->" else page == 0
+        page_button_decrease.disabled = craftView.page == 0
+        page_button_increase.disabled = len(buttons)==craftView.to_index
+        for button in buttons[craftView.page*20:min((craftView.page+1)*20,len(buttons))]:
+            craftView.add_item(button)
+        await interaction.response.edit_message(
+            content= f'Click on items to include/exclude them in visual crafting breakdown\nshowing page {craftView.page+1}/{craftView.max_page}',
+            view = craftView
+        )
+
+    page_button_decrease.callback = page_decrease
+    page_button_increase.callback = page_increase
+    craftView.add_item(page_button_decrease)
+    craftView.add_item(page_button_increase)
+
+
+    await interaction.response.send_message(f'Click on items to include/exclude them in visual crafting breakdown\nshowing page {craftView.page+1}/{craftView.max_page}',view = craftView,ephemeral=True)
     
         
 def order_calc_static(ordered_items, combined_inventory,filename,use_mpf):

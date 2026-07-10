@@ -4,7 +4,7 @@ import numpy as np
 recipes = pd.read_excel('Ordersheet_input.xlsx',sheet_name='Recipes')
 item_infos = pd.read_excel('Ordersheet_input.xlsx',sheet_name='Items')
 # These recipes can be crafted in batches of 9 at MPF, rest only 5
-nine_crate_discountable = pd.unique((recipes.loc[recipes['Facility'] == 'Factory; MPF','Item']).str.strip('\\(Crate\\)').str.strip())
+nine_crate_discountable = pd.unique((recipes.loc[recipes['Facility'] == 'Factory; MPF','Item']).str.removesuffix('(Crate)').str.strip())
 recipe_copy = copy.deepcopy(recipes) 
 recipe_copy['Ingredients'] = recipe_copy.Ingredients.str.split(';')
 recipe_copy = recipe_copy.explode('Ingredients', ignore_index = True)
@@ -19,8 +19,10 @@ crate_recipes = recipes.loc[recipes['Item'].str.contains('\\(Crate\\)')]
 direct_recipes = recipes.loc[~(recipes['Item'].str.contains('\\(Crate\\)')) | recipes['Item'].isin(used_as_mats)]
 crate_recipes = crate_recipes.merge(item_infos,how = 'left', left_on = 'Item', right_on = 'Item name')
 crate_recipes['# Output'] = crate_recipes['# Output'] * crate_recipes['Items per Crate']
-crate_recipes['Item'] = crate_recipes['Item'].str.strip('\\(Crate\\)').str.strip()
-recipes = pd.concat([crate_recipes.loc[:,['Item','Facility','Ingredients','# Output']], direct_recipes])
+crate_recipes['Item'] = crate_recipes['Item'].str.removesuffix('(Crate)').str.strip()
+crate_recipes['output crated'] = True
+direct_recipes['output crated'] = False
+recipes = pd.concat([crate_recipes.loc[:,['Item','Facility','Ingredients','# Output','output crated']], direct_recipes])
 recipes['Facility'] = recipes.Facility.str.split(';')
 recipes = recipes.explode('Facility', ignore_index = True)
 recipes['Facility'] = recipes.Facility.str.strip()
@@ -79,3 +81,13 @@ ambiguous = recipes['Item'].isin(pd.unique(recipes['Item'].loc[recipes['Signatur
 recipes.loc[ambiguous,'Signature'] = recipes.loc[ambiguous,'Signature'] + recipes.loc[ambiguous,'Ingredients'].str.replace(' ','')
 valid_items = pd.read_excel('Ordersheet_input.xlsx',sheet_name='Items')
 valid_items = np.unique(pd.concat([valid_items['Item name'].str.extract(r'(.*) \(Crate\)')[0].dropna(),valid_items['Item name']]))
+
+# item_infos['Item name'] = item_infos['Item name'].str.removesuffix('(Crate)').str.strip()
+# item_infos = item_infos.sort_values(['Item name','Items per Crate'])
+# #Keep entry without crate info only when the one with crate info is not available
+# item_infos = item_infos.loc[-item_infos['Item name'].duplicated()]
+# item_infos['Items per Crate'] = item_infos['Items per Crate'].fillna(0)
+
+# #Save processed excel for easier typescript version port
+# item_infos.to_csv('Item_infos.csv',index = False)
+# recipes.to_csv('Item_recipes.csv',index = False)
